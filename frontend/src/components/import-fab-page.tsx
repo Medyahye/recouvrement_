@@ -1,12 +1,29 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  FileSpreadsheet,
+  Loader2,
+  TrendingDown,
+  TrendingUp,
+  UploadCloud,
+} from "lucide-react";
 
-import { API_BASE_URL } from "@/lib/api";
-import { formatCurrency, formatDecimal } from "@/lib/format";
-import type { ComparisonResponse, FabImport } from "@/lib/types";
 import { SectionCard } from "@/components/ui/section-card";
-import { StatCard } from "@/components/ui/stat-card";
+import { API_BASE_URL } from "@/lib/api";
+import { formatDecimal } from "@/lib/format";
+import type { ComparisonResponse, FabImport } from "@/lib/types";
+
+function formatUploadError(message: string) {
+  if (message.includes("clients_client") || message.includes("contrainte NOT NULL") || message.includes("NOT NULL")) {
+    return "Le fichier n'a pas pu être importé à cause d'un ancien champ obligatoire dans la base. Lancez les migrations backend puis réessayez.";
+  }
+
+  return message;
+}
 
 function ComparisonCard({
   label,
@@ -17,21 +34,36 @@ function ComparisonCard({
   data: { today: number; previous: number; variation: number; variation_pct: number | null };
   unit?: string;
 }) {
+  const variationIsPositive = data.variation >= 0;
+  const TrendIcon = variationIsPositive ? TrendingUp : TrendingDown;
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-slate-800">
-        Aujourd&apos;hui: {formatDecimal(data.today, 2)}
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <p className="text-xs font-semibold uppercase text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-semibold leading-none text-slate-950">
+        {formatDecimal(data.today, 2)}
         {unit}
       </p>
-      <p className="text-sm text-slate-500">
-        Précédent: {formatDecimal(data.previous, 2)}
-        {unit}
-      </p>
-      <p className="text-sm text-slate-500">
-        Variation: {formatDecimal(data.variation, 2)}
-        {unit} {data.variation_pct !== null ? `(${formatDecimal(data.variation_pct, 2)}%)` : ""}
-      </p>
+      <div className="mt-4 space-y-1.5 text-sm text-slate-500">
+        <p>
+          Précédent:{" "}
+          <span className="font-medium text-slate-700">
+            {formatDecimal(data.previous, 2)}
+            {unit}
+          </span>
+        </p>
+        <p
+          className={`inline-flex items-center gap-1.5 font-medium ${
+            variationIsPositive ? "text-emerald-700" : "text-red-700"
+          }`}
+        >
+          <TrendIcon size={15} />
+          <span>
+            Variation: {formatDecimal(data.variation, 2)}
+            {unit} {data.variation_pct !== null ? `(${formatDecimal(data.variation_pct, 2)}%)` : ""}
+          </span>
+        </p>
+      </div>
     </div>
   );
 }
@@ -59,7 +91,7 @@ export function ImportFabPage({
 
   async function handleUpload() {
     if (!selectedFile) {
-      setError("Aucun fichier sélectionné.");
+      setError("Sélectionnez un fichier .txt ou .csv avant de lancer le traitement.");
       return;
     }
 
@@ -83,7 +115,8 @@ export function ImportFabPage({
       setComparison(payload.comparison);
       setSelectedFile(null);
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Erreur serveur.");
+      const message = uploadError instanceof Error ? uploadError.message : "Erreur serveur.";
+      setError(formatUploadError(message));
     } finally {
       setIsLoading(false);
     }
@@ -92,79 +125,101 @@ export function ImportFabPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold text-slate-800">Import FAB</h1>
-        <p className="mt-2 text-slate-500">
-          Importez le fichier FAB du jour pour lancer le nettoyage, le filtrage et le calcul des zones
-          prioritaires.
+        <h1 className="text-3xl font-semibold text-slate-950">Import FAB</h1>
+        <p className="mt-2 max-w-3xl text-sm text-slate-500">
+          Importez le fichier du jour pour nettoyer les données, calculer les scores et actualiser les zones de
+          recouvrement.
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <SectionCard title="Importer le fichier FAB du jour">
-          <div className="rounded-xl border border-dashed border-blue-300 bg-slate-50 p-8 text-center">
-            <p className="text-slate-700">Glissez-déposez votre fichier ici</p>
-            <p className="my-3 text-sm text-slate-500">ou</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <label className="cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm">
+          <div className="rounded-lg border border-dashed border-blue-300 bg-blue-50/40 p-8 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-white text-blue-700 shadow-sm">
+              <UploadCloud size={24} />
+            </div>
+            <p className="mt-4 text-lg font-semibold text-slate-900">Glissez-déposez votre fichier ici</p>
+            <p className="mt-1 text-sm text-slate-500">Formats acceptés : .txt, .csv</p>
+
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <label className="cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
                 Choisir un fichier
                 <input
                   type="file"
                   accept=".txt,.csv"
                   className="hidden"
-                  onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                  onChange={(event) => {
+                    setSelectedFile(event.target.files?.[0] ?? null);
+                    setError(null);
+                  }}
                 />
               </label>
               <button
                 type="button"
                 onClick={handleUpload}
                 disabled={isLoading}
-                className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
+                {isLoading && <Loader2 size={16} className="animate-spin" />}
                 {isLoading ? "Traitement..." : "Lancer le traitement"}
               </button>
             </div>
-            <p className="mt-4 text-sm text-slate-400">Formats acceptés : .txt, .csv</p>
           </div>
-          {isLoading ? <p className="mt-4 text-sm text-blue-700">Traitement du fichier en cours...</p> : null}
-          {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+
+          {isLoading ? (
+            <div className="mt-4 flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              <Loader2 size={16} className="animate-spin" />
+              Traitement du fichier en cours...
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="mt-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold">Import impossible</p>
+                <p className="mt-1">{error}</p>
+              </div>
+            </div>
+          ) : null}
         </SectionCard>
 
         <SectionCard title="Fichier sélectionné">
           {fileMeta ? (
-            <div className="space-y-3 text-sm text-slate-600">
-              <p>
-                <span className="font-semibold text-slate-800">Nom:</span> {fileMeta.nom}
-              </p>
-              <p>
-                <span className="font-semibold text-slate-800">Taille:</span> {fileMeta.taille}
-              </p>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700">
+                  <FileSpreadsheet size={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-slate-900">{fileMeta.nom}</p>
+                  <p className="mt-1 text-sm text-slate-500">{fileMeta.taille}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-emerald-700">
+                <CheckCircle2 size={16} />
+                Fichier prêt pour le traitement.
+              </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">Aucun fichier sélectionné.</p>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+              Aucun fichier sélectionné.
+            </div>
           )}
         </SectionCard>
       </div>
 
       {latestImport ? (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-            <StatCard title="Nom fichier" value={latestImport.nom_fichier} />
-            <StatCard title="Lignes totales" value={formatDecimal(latestImport.nombre_lignes_total, 0)} />
-            <StatCard title="Clients retenus" value={formatDecimal(latestImport.nombre_clients_filtres, 0)} />
-            <StatCard title="Zones générées" value={formatDecimal(latestImport.nombre_zones, 0)} />
-            <StatCard title="Montant total" value={`${formatCurrency(latestImport.montant_total)} MRU`} />
-            <StatCard
-              title="Ancienneté moyenne"
-              value={`${formatDecimal(latestImport.anciennete_moyenne_jours, 1)} jours`}
-              subtitle={latestImport.statut}
-            />
-          </div>
-
           <SectionCard
             title="Comparaison avec le dernier FAB importé"
             action={
-              <a href="/zones" className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white">
+              <a
+                href="/zones"
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white"
+              >
                 Voir les zones prioritaires
+                <ArrowRight size={16} />
               </a>
             }
           >

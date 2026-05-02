@@ -21,10 +21,8 @@ def generate_word_report(fab_import: FabImport) -> dict:
 
     clients_df = __import__("pandas").DataFrame(list(fab_import.clients.order_by("-score_client").values()))
     zones_df = __import__("pandas").DataFrame(list(fab_import.zones.order_by("-score_zone").values()))
-    if not clients_df.empty:
-        clients_df.to_csv(clients_csv, index=False)
-    if not zones_df.empty:
-        zones_df.to_csv(zones_csv, index=False)
+    clients_df.to_csv(clients_csv, index=False)
+    zones_df.to_csv(zones_csv, index=False)
 
     document = Document()
     document.add_heading("Rapport quotidien du recouvrement", level=1)
@@ -64,18 +62,40 @@ def generate_word_report(fab_import: FabImport) -> dict:
     document.save(docx_path)
 
     with docx_path.open("rb") as generated_file:
-        report = Report.objects.create(
+        word_report = Report.objects.create(
             fab_import=fab_import,
             titre=f"Rapport quotidien du recouvrement - {fab_import.nom_fichier}",
             type_rapport=Report.TypeRapport.QUOTIDIEN,
             format=Report.FormatRapport.WORD,
             date_generation=timezone.now(),
         )
-        report.fichier.save(docx_path.name, File(generated_file), save=True)
+        word_report.fichier.save(docx_path.name, File(generated_file), save=True)
+
+    with clients_csv.open("rb") as generated_file:
+        clients_report = Report.objects.create(
+            fab_import=fab_import,
+            titre=f"Clients scores - {fab_import.nom_fichier}",
+            type_rapport=Report.TypeRapport.CLIENTS,
+            format=Report.FormatRapport.CSV,
+            date_generation=timezone.now(),
+        )
+        clients_report.fichier.save(clients_csv.name, File(generated_file), save=True)
+
+    with zones_csv.open("rb") as generated_file:
+        zones_report = Report.objects.create(
+            fab_import=fab_import,
+            titre=f"Zones prioritaires - {fab_import.nom_fichier}",
+            type_rapport=Report.TypeRapport.ZONES,
+            format=Report.FormatRapport.CSV,
+            date_generation=timezone.now(),
+        )
+        zones_report.fichier.save(zones_csv.name, File(generated_file), save=True)
 
     return {
-        "report_id": report.id,
-        "word_file": report.fichier.url,
-        "clients_csv": str(clients_csv.relative_to(settings.MEDIA_ROOT)).replace("\\", "/"),
-        "zones_csv": str(zones_csv.relative_to(settings.MEDIA_ROOT)).replace("\\", "/"),
+        "word_report_id": word_report.id,
+        "clients_report_id": clients_report.id,
+        "zones_report_id": zones_report.id,
+        "word_file": word_report.fichier.url,
+        "clients_csv": clients_report.fichier.url,
+        "zones_csv": zones_report.fichier.url,
     }

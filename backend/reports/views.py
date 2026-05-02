@@ -20,12 +20,10 @@ class GenerateReportAPIView(APIView):
             return Response({"detail": "Aucun import reussi disponible."}, status=404)
 
         generated = generate_word_report(latest_fab)
-        report = latest_fab.reports.first()
-        history = ReportSerializer(latest_fab.reports.all(), many=True).data
+        history = Report.objects.all().order_by("-date_generation")
         return Response(
             {
                 "generated": generated,
-                "report": ReportSerializer(report).data if report else None,
-                "history": history,
+                "history": ReportSerializer(history, many=True).data,
             }
         )

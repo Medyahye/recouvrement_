@@ -108,3 +108,15 @@ export type ReportEntry = {
   date_generation: string;
   fab_import: number;
 };
+
+export type GenerateReportResponse = {
+  generated: {
+    word_report_id: number;
+    clients_report_id: number;
+    zones_report_id: number;
+    word_file: string;
+    clients_csv: string;
+    zones_csv: string;
+  };
+  history: ReportEntry[];
+};

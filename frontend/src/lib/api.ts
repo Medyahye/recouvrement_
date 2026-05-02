@@ -3,6 +3,7 @@ import type {
   ComparisonResponse,
   DashboardSummary,
   FabImport,
+  GenerateReportResponse,
   PaginatedResponse,
   ReportEntry,
   Zone,
@@ -38,6 +39,7 @@ export const api = {
   getZoneDetail: (id: number) => request<ZoneDetail>(`/zones/${id}/`),
   getLatestClients: (query = "") => request<PaginatedResponse<Client>>(`/clients/latest/${query}`),
   getReports: () => request<ReportEntry[]>("/reports/"),
+  generateReport: () => request<GenerateReportResponse>("/reports/generate/", { method: "POST" }),
 };
 
 export { API_BASE_URL };

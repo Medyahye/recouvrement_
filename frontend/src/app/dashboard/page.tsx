@@ -1,57 +1,75 @@
-import { SectionCard } from "@/components/ui/section-card";
-import { StatCard } from "@/components/ui/stat-card";
-import { PriorityBadge } from "@/components/ui/priority-badge";
-import { PriorityChart } from "@/components/ui/priority-chart";
-import { formatCurrency, formatDate, formatDecimal } from "@/lib/format";
-import { api } from "@/lib/api";
+import Link from "next/link";
 import {
-  FileText,
-  Users,
-  MapPinned,
+  ArrowRight,
   Banknote,
   CalendarClock,
-  TrendingUp,
   CheckCircle2,
-  ArrowRight,
+  FileText,
+  MapPinned,
+  TrendingUp,
+  UploadCloud,
+  Users,
 } from "lucide-react";
-import Link from "next/link";
+
+import { PriorityBadge } from "@/components/ui/priority-badge";
+import { SectionCard } from "@/components/ui/section-card";
+import { StatCard } from "@/components/ui/stat-card";
+import { api } from "@/lib/api";
+import { formatCurrency, formatDate, formatDecimal } from "@/lib/format";
 
 export default async function DashboardPage() {
   const dashboard = await api.getDashboard();
 
   if (!dashboard) {
     return (
-      <SectionCard title="Tableau de bord">
-        <p className="text-sm text-slate-400">
-          Aucune donnée disponible. Lancez d&apos;abord un import FAB.
-        </p>
-      </SectionCard>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-semibold text-slate-950">Tableau de bord</h1>
+          <p className="mt-2 text-sm text-slate-500">Aucun import réussi n&apos;est encore disponible.</p>
+        </div>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mx-auto max-w-xl text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+              <UploadCloud size={24} />
+            </div>
+            <h2 className="mt-4 text-xl font-semibold text-slate-950">Commencez par importer un fichier FAB</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              Le tableau de bord se remplira automatiquement après le premier traitement réussi : clients retenus,
+              zones prioritaires, montants et indicateurs de recouvrement.
+            </p>
+            <Link
+              href="/import-fab"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800"
+            >
+              Aller à l&apos;import FAB
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+        </section>
+      </div>
     );
   }
 
-  const { HAUTE = 0, MOYENNE = 0, FAIBLE = 0 } = dashboard.repartition_priorites;
   const t = dashboard.resume_dernier_traitement;
 
   return (
     <div className="space-y-6">
-
-      {/* En-tête page */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Tableau de bord</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Vue d&apos;ensemble des indicateurs clés et des résultats du traitement.
+        <h1 className="text-3xl font-semibold text-slate-950">Tableau de bord</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Vue d&apos;ensemble des indicateurs clés et des résultats du dernier traitement.
         </p>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <StatCard
           title="Dernier FAB importé"
           value={dashboard.dernier_fichier}
           subtitle={formatDate(t.date_import)}
           icon={<FileText size={18} className="text-blue-600" />}
           iconBg="bg-blue-50"
-          valueClassName="text-sm font-semibold"
+          valueClassName="text-sm"
         />
         <StatCard
           title="Clients retenus"
@@ -91,63 +109,46 @@ export default async function DashboardPage() {
           subtitle="du montant total"
           icon={<TrendingUp size={18} className="text-green-600" />}
           iconBg="bg-green-50"
-          valueClassName="text-3xl text-green-600"
+          valueClassName="text-3xl text-green-700"
         />
       </div>
 
-      {/* Grille principale */}
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
-
-        {/* Top 10 zones */}
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.6fr)]">
         <SectionCard
           title="Top 10 zones prioritaires"
           action={
             <Link
               href="/zones"
-              className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-50"
             >
               Voir toutes les zones
               <ArrowRight size={12} />
             </Link>
           }
         >
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                    Zone
-                  </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                    Nb clients
-                  </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                    Solde total
-                  </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                    Score
-                  </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                    Priorité
-                  </th>
+          <div className="w-full max-w-full overflow-x-auto rounded-lg border border-slate-200">
+            <table className="min-w-[720px] text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
+                <tr>
+                  <th className="whitespace-nowrap px-3 py-3 font-semibold">Zone</th>
+                  <th className="whitespace-nowrap px-3 py-3 font-semibold">Nb clients</th>
+                  <th className="whitespace-nowrap px-3 py-3 font-semibold">Solde total</th>
+                  <th className="whitespace-nowrap px-3 py-3 font-semibold">Score</th>
+                  <th className="whitespace-nowrap px-3 py-3 font-semibold">Priorité</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {dashboard.top_10_zones.map((zone) => (
-                  <tr key={zone.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-3 py-3 font-medium text-slate-700">
-                      {zone.zone_code}
-                    </td>
-                    <td className="px-3 py-3 text-slate-500">
-                      {zone.nb_clients}
-                    </td>
-                    <td className="px-3 py-3 text-slate-500">
+                  <tr key={zone.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td className="whitespace-nowrap px-3 py-3 font-medium text-slate-900">{zone.zone_code}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-slate-600">{zone.nb_clients}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-slate-600">
                       {formatCurrency(zone.solde_total)} MRU
                     </td>
-                    <td className="px-3 py-3 font-semibold text-slate-700">
+                    <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-800">
                       {formatDecimal(zone.score_zone, 1)}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="whitespace-nowrap px-3 py-3">
                       <PriorityBadge priority={zone.priorite_zone} />
                     </td>
                   </tr>
@@ -157,60 +158,40 @@ export default async function DashboardPage() {
           </div>
         </SectionCard>
 
-        {/* Colonne droite */}
-        <div className="space-y-5">
-
-          {/* Graphique répartition */}
-          <SectionCard title="Répartition des zones par priorité">
-            <PriorityChart haute={HAUTE} moyenne={MOYENNE} faible={FAIBLE} />
-          </SectionCard>
-
-          {/* Résumé traitement */}
+        <div className="min-w-0 space-y-5">
           <SectionCard title="Résumé du dernier traitement">
             <ul className="space-y-3 text-sm text-slate-600">
               <li className="flex items-start gap-2.5">
-                <CheckCircle2 size={15} className="text-blue-500 mt-0.5 shrink-0" />
+                <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-blue-600" />
                 <span>
-                  Fichier FAB importé :{" "}
-                  <span className="font-medium text-slate-700">
-                    {dashboard.dernier_fichier}
-                  </span>{" "}
+                  Fichier FAB importé : <span className="font-medium text-slate-800">{dashboard.dernier_fichier}</span>{" "}
                   ({t.nombre_lignes_total.toLocaleString("fr-FR")} lignes).
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
-                <CheckCircle2 size={15} className="text-blue-500 mt-0.5 shrink-0" />
+                <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-blue-600" />
                 <span>
-                  <span className="font-medium text-slate-700">
-                    {formatDecimal(dashboard.clients_filtres, 0)}
-                  </span>{" "}
+                  <span className="font-medium text-slate-800">{formatDecimal(dashboard.clients_filtres, 0)}</span>{" "}
                   clients retenus après filtrage et nettoyage.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
-                <CheckCircle2 size={15} className="text-blue-500 mt-0.5 shrink-0" />
+                <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-blue-600" />
                 <span>
-                  <span className="font-medium text-slate-700">
-                    {formatDecimal(dashboard.nombre_zones, 0)}
-                  </span>{" "}
-                  zones identifiées avec un montant total de{" "}
-                  <span className="font-medium text-slate-700">
-                    {formatCurrency(dashboard.montant_total)} MRU
-                  </span>.
+                  <span className="font-medium text-slate-800">{formatDecimal(dashboard.nombre_zones, 0)}</span> zones
+                  identifiées avec un montant total de{" "}
+                  <span className="font-medium text-slate-800">{formatCurrency(dashboard.montant_total)} MRU</span>.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
-                <CheckCircle2 size={15} className="text-blue-500 mt-0.5 shrink-0" />
+                <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-blue-600" />
                 <span>
                   Score moyen des zones :{" "}
-                  <span className="font-medium text-slate-700">
-                    {formatDecimal(dashboard.score_moyen, 1)}
-                  </span>.
+                  <span className="font-medium text-slate-800">{formatDecimal(dashboard.score_moyen, 1)}</span>.
                 </span>
               </li>
             </ul>
           </SectionCard>
-
         </div>
       </div>
     </div>

@@ -254,13 +254,13 @@ def process_fab_file(uploaded_file) -> Tuple[pd.DataFrame, Dict[str, object]]:
             df[optional_column] = None
 
     today = pd.Timestamp(timezone.localdate())
-    one_year_ago = today - timedelta(days=365)
+    three_months_ago = today - timedelta(days=90)
     before_count = len(df)
 
     df = df[df["code_relance"] == 1]
     df = df[df["solde"] > 0]
     df = df[df["date_dernier_paiement"].notna()]
-    df = df[df["date_dernier_paiement"] >= one_year_ago]
+    df = df[df["date_dernier_paiement"] >= three_months_ago]
     df = df[df["date_dernier_paiement"] <= today]
     for column in ["code_centre", "secteur_facturation", "tournee_releve", "ref_abonnement"]:
         df = df[df[column].notna()]
