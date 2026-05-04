@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
               <div>
                 <p className="text-lg font-bold text-blue-700">SNDE</p>
-                <p className="text-xs text-slate-500">Recouvrement</p>
+                {/* <p className="text-xs text-slate-500">Recouvrement</p> */}
               </div>
             </div>
           </div>
@@ -75,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="flex min-w-0 items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="truncate text-base font-semibold md:text-xl">
-                  Pilotage intelligent du recouvrement
+                  Recouvrement - Société Nationale d'Eau
                 </p>
               </div>
               <div className="hidden shrink-0 items-center gap-4 text-sm md:flex">

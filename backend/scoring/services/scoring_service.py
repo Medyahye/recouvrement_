@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Tuple
 
+import numpy as np
 import pandas as pd
 
 from scoring.models import ScoringSetting
@@ -27,6 +28,13 @@ def _normalize_series(series: pd.Series) -> pd.Series:
     return (series - minimum) / (maximum - minimum)
 
 
+def _normalize_log(series: pd.Series) -> pd.Series:
+    if series.empty:
+        return series
+    log_series = np.log1p(series.clip(lower=0))
+    return _normalize_series(log_series)
+
+
 def _priority_from_score(score: float, seuil_haute: float, seuil_moyenne: float) -> str:
     if score >= seuil_haute:
         return "HAUTE"
@@ -42,7 +50,7 @@ def score_clients_and_zones(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFram
     activity_data = scored["activite_client"].apply(classer_activite)
     scored["famille_activite"] = activity_data.apply(lambda item: item[0])
     scored["score_activite"] = activity_data.apply(lambda item: item[1])
-    scored["score_solde"] = _normalize_series(scored["solde"].astype(float))
+    scored["score_solde"] = _normalize_log(scored["solde"].astype(float))
     scored["score_anciennete"] = scored["anciennete_cappee"].astype(float) / float(setting.cap_anciennete_jours)
     scored["score_client"] = (
         setting.poids_solde_client * scored["score_solde"]
@@ -50,8 +58,10 @@ def score_clients_and_zones(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFram
         + setting.poids_anciennete_client * scored["score_anciennete"]
     ) * 100.0
     scored["score_client"] = scored["score_client"].round(2)
+    seuil_haute_client = scored["score_client"].quantile(0.75)
+    seuil_moyenne_client = scored["score_client"].quantile(0.50)
     scored["priorite_client"] = scored["score_client"].apply(
-        lambda score: _priority_from_score(score, setting.seuil_haute, setting.seuil_moyenne)
+        lambda score: _priority_from_score(score, seuil_haute_client, seuil_moyenne_client)
     )
 
     grouped = (
@@ -69,7 +79,7 @@ def score_clients_and_zones(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFram
         .reset_index()
     )
 
-    grouped["score_solde_total"] = _normalize_series(grouped["solde_total"].astype(float))
+    grouped["score_solde_total"] = _normalize_log(grouped["solde_total"].astype(float))
     grouped["score_nb_clients"] = _normalize_series(grouped["nb_clients"].astype(float))
     grouped["score_anciennete_zone"] = _normalize_series(grouped["anciennete_moyenne_jours"].astype(float))
     grouped["score_activite_zone"] = _normalize_series(grouped["score_activite_moyen"].astype(float))
@@ -80,8 +90,10 @@ def score_clients_and_zones(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFram
         + setting.poids_activite_zone * grouped["score_activite_zone"]
     ) * 100.0
     grouped["score_zone"] = grouped["score_zone"].round(2)
+    seuil_haute_zone = grouped["score_zone"].quantile(0.75)
+    seuil_moyenne_zone = grouped["score_zone"].quantile(0.50)
     grouped["priorite_zone"] = grouped["score_zone"].apply(
-        lambda score: _priority_from_score(score, setting.seuil_haute, setting.seuil_moyenne)
+        lambda score: _priority_from_score(score, seuil_haute_zone, seuil_moyenne_zone)
     )
     grouped = grouped.sort_values(by="score_zone", ascending=False).reset_index(drop=True)
 

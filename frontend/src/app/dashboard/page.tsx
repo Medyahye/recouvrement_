@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   FileText,
   MapPinned,
-  TrendingUp,
   UploadCloud,
   Users,
 } from "lucide-react";
@@ -62,7 +61,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         <StatCard
           title="Dernier FAB importé"
           value={dashboard.dernier_fichier}
@@ -102,14 +101,6 @@ export default async function DashboardPage() {
           icon={<CalendarClock size={18} className="text-amber-500" />}
           iconBg="bg-amber-50"
           valueClassName="text-3xl"
-        />
-        <StatCard
-          title="Potentiel de recouvrement"
-          value={`${formatDecimal(dashboard.score_moyen, 1)} %`}
-          subtitle="du montant total"
-          icon={<TrendingUp size={18} className="text-green-600" />}
-          iconBg="bg-green-50"
-          valueClassName="text-3xl text-green-700"
         />
       </div>
 
