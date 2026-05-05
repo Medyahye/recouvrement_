@@ -9,6 +9,7 @@ load_dotenv(BASE_DIR / ".env")
 
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-snde-dev-key")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 CORS_ALLOWED_ORIGINS = os.getenv(
@@ -33,6 +34,7 @@ INSTALLED_APPS = [
     "scoring",
     "reports",
     "dashboard",
+    "chatbot",
 ]
 
 MIDDLEWARE = [
