@@ -7,9 +7,9 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   Loader2,
+  RefreshCw,
   TrendingDown,
   TrendingUp,
-  UploadCloud,
 } from "lucide-react";
 
 import { SectionCard } from "@/components/ui/section-card";
@@ -77,7 +77,9 @@ export function ImportFabPage({
 }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [latestImport, setLatestImport] = useState<FabImport | null>(initialImport);
   const [comparison, setComparison] = useState<ComparisonResponse | null>(initialComparison);
 
@@ -89,6 +91,33 @@ export function ImportFabPage({
     };
   }, [selectedFile]);
 
+  async function handlePollMinio() {
+    setIsPolling(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/imports/poll-minio/`, { method: "POST" });
+      const payload = await response.json();
+      if (payload.summary) {
+        setLatestImport(payload.summary);
+        setComparison(payload.comparison);
+        const nb = payload.nb_fichiers as number;
+        const liste = (payload.fichiers as string[]).join(", ");
+        setSuccessMessage(
+          nb === 1
+            ? `Fichier "${liste}" importé avec succès — ${payload.summary.nombre_clients_filtres} clients, ${payload.summary.nombre_zones} zones.`
+            : `${nb} fichiers importés avec succès : ${liste}`
+        );
+      } else {
+        setError(payload.detail || "Aucun nouveau fichier dans MinIO.");
+      }
+    } catch {
+      setError("Impossible de contacter MinIO.");
+    } finally {
+      setIsPolling(false);
+    }
+  }
+
   async function handleUpload() {
     if (!selectedFile) {
       setError("Sélectionnez un fichier .txt ou .csv avant de lancer le traitement.");
@@ -97,6 +126,7 @@ export function ImportFabPage({
 
     setIsLoading(true);
     setError(null);
+    setSuccessMessage(null);
     const formData = new FormData();
     formData.append("file", selectedFile);
 
@@ -136,40 +166,29 @@ export function ImportFabPage({
         <SectionCard title="Importer le fichier FAB du jour">
           <div className="rounded-lg border border-dashed border-blue-300 bg-blue-50/40 p-8 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-white text-blue-700 shadow-sm">
-              <UploadCloud size={24} />
+              <RefreshCw size={24} />
             </div>
-            <p className="mt-4 text-lg font-semibold text-slate-900">Glissez-déposez votre fichier ici</p>
-            <p className="mt-1 text-sm text-slate-500">Formats acceptés : .txt, .csv</p>
-
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <label className="cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-                Choisir un fichier
-                <input
-                  type="file"
-                  accept=".txt,.csv"
-                  className="hidden"
-                  onChange={(event) => {
-                    setSelectedFile(event.target.files?.[0] ?? null);
-                    setError(null);
-                  }}
-                />
-              </label>
+            <p className="mt-4 text-lg font-semibold text-slate-900">Récupérer le FAB depuis MinIO</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Cliquez pour détecter et importer automatiquement les nouveaux fichiers FAB.
+            </p>
+            <div className="mt-6 flex justify-center">
               <button
                 type="button"
-                onClick={handleUpload}
-                disabled={isLoading}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={handlePollMinio}
+                disabled={isPolling}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isLoading && <Loader2 size={16} className="animate-spin" />}
-                {isLoading ? "Traitement..." : "Lancer le traitement"}
+                {isPolling ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                {isPolling ? "Vérification en cours..." : "Vérifier MinIO"}
               </button>
             </div>
           </div>
 
-          {isLoading ? (
+          {isPolling ? (
             <div className="mt-4 flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
               <Loader2 size={16} className="animate-spin" />
-              Traitement du fichier en cours...
+              Recherche de nouveaux fichiers dans MinIO...
             </div>
           ) : null}
 
@@ -182,28 +201,32 @@ export function ImportFabPage({
               </div>
             </div>
           ) : null}
+
+          {successMessage ? (
+            <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold">Import réussi</p>
+                <p className="mt-1">{successMessage}</p>
+              </div>
+            </div>
+          ) : null}
         </SectionCard>
 
-        <SectionCard title="Fichier sélectionné">
-          {fileMeta ? (
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700">
-                  <FileSpreadsheet size={20} />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-slate-900">{fileMeta.nom}</p>
-                  <p className="mt-1 text-sm text-slate-500">{fileMeta.taille}</p>
-                </div>
+        <SectionCard title="Dernier fichier importé">
+          {latestImport ? (
+            <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700">
+                <FileSpreadsheet size={20} />
               </div>
-              <div className="flex items-center gap-2 text-sm text-emerald-700">
-                <CheckCircle2 size={16} />
-                Fichier prêt pour le traitement.
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-slate-900">{latestImport.nom_fichier}</p>
+                <p className="mt-1 text-sm text-slate-500">{latestImport.nombre_clients_filtres} clients · {latestImport.nombre_zones} zones</p>
               </div>
             </div>
           ) : (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-              Aucun fichier sélectionné.
+              Aucun fichier importé.
             </div>
           )}
         </SectionCard>
