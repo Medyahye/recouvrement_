@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import timedelta
 from io import BytesIO
 from typing import Dict, Iterable, Tuple
 
@@ -22,6 +21,9 @@ REQUIRED_COLUMNS = {
     "code_relance",
     "activite_client",
     "date_dernier_paiement",
+    "code_activite",
+    "code_echeancier",
+    "date_derniere_facture",
 }
 NULL_LIKE_VALUES = {"", "NAN", "NONE", "NULL", "NAT"}
 
@@ -238,6 +240,8 @@ def process_fab_file(uploaded_file) -> Tuple[pd.DataFrame, Dict[str, object]]:
     )
     df["solde"] = pd.to_numeric(df["solde"], errors="coerce")
     df["code_relance"] = pd.to_numeric(df["code_relance"], errors="coerce").fillna(0).astype(int)
+    df["code_activite"] = pd.to_numeric(df["code_activite"], errors="coerce").fillna(0).astype(int)
+    df["code_echeancier"] = pd.to_numeric(df["code_echeancier"], errors="coerce").fillna(0).astype(int)
     df["date_dernier_paiement"] = pd.to_datetime(
         df["date_dernier_paiement"], errors="coerce", dayfirst=True
     )
@@ -254,20 +258,25 @@ def process_fab_file(uploaded_file) -> Tuple[pd.DataFrame, Dict[str, object]]:
             df[optional_column] = None
 
     today = pd.Timestamp(timezone.localdate())
-    three_months_ago = today - timedelta(days=90)
     before_count = len(df)
 
-    df = df[df["code_relance"] == 1]
-    df = df[df["solde"] > 0]
-    df = df[df["date_dernier_paiement"].notna()]
-    df = df[df["date_dernier_paiement"] >= three_months_ago]
-    df = df[df["date_dernier_paiement"] <= today]
+    # Filtrage selon les critères de la Note Explicative §3.1
+    df = df[df["code_relance"] == 1]  # Coupure immédiate
+    df = df[df["code_activite"] == 1]  # Abonné actif
+    df = df[df["code_echeancier"] == 0]  # Pas d'échéancier
+    df = df[df["solde"] > 0]  # Solde positif
+    df = df[df["date_derniere_facture"].notna()]  # Date facture renseignée
+    df = df[df["date_dernier_paiement"].notna()]  # Date dernier paiement renseignée
+    df = df[df["activite_client"].notna()]  # Activité client renseignée
     for column in ["code_centre", "secteur_facturation", "tournee_releve", "ref_abonnement"]:
         df = df[df[column].notna()]
 
     df = df.drop_duplicates()
     if df.empty:
         raise ValueError("Aucune ligne exploitable apres filtrage.")
+
+    # Renommer code_echeancier en code_echeance pour la BDD
+    df = df.rename(columns={"code_echeancier": "code_echeance"})
 
     setting = ScoringSetting.objects.filter(actif=True).order_by("-updated_at").first()
     cap_anciennete = setting.cap_anciennete_jours if setting else 365

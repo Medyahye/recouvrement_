@@ -10,6 +10,7 @@ import {
   FileBarChart2,
   LayoutDashboard,
   MapPinned,
+  Settings,
   Upload,
   Users,
 } from "lucide-react";
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/reports", label: "Rapports", icon: FileBarChart2 },
   { href: "/chatbot", label: "Assistant IA", icon: BotMessageSquare },
+  { href: "/parametres", label: "Paramètres", icon: Settings },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

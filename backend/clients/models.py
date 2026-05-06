@@ -25,6 +25,8 @@ class Client(models.Model):
     famille_activite = models.CharField(max_length=100, blank=True, default="")
     solde = models.FloatField(default=0)
     code_relance = models.IntegerField(default=0)
+    code_activite = models.IntegerField(default=0)
+    code_echeance = models.IntegerField(default=0)
     date_derniere_facture = models.DateField(null=True, blank=True)
     date_dernier_paiement = models.DateField(null=True, blank=True)
     anciennete_jours = models.IntegerField(default=0)

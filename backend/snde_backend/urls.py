@@ -10,5 +10,6 @@ urlpatterns = [
     path("api/clients/", include("clients.urls")),
     path("api/dashboard/", include("dashboard.urls")),
     path("api/reports/", include("reports.urls")),
+    path("api/scoring/", include("scoring.urls")),
     path("api/chatbot/", include("chatbot.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
