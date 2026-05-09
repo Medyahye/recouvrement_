@@ -28,6 +28,7 @@ class Client(models.Model):
     code_activite = models.IntegerField(default=0)
     code_echeance = models.IntegerField(default=0)
     date_derniere_facture = models.DateField(null=True, blank=True)
+    montant_derniere_facture = models.FloatField(null=True, blank=True)
     date_dernier_paiement = models.DateField(null=True, blank=True)
     anciennete_jours = models.IntegerField(default=0)
     anciennete_cappee = models.IntegerField(default=0)

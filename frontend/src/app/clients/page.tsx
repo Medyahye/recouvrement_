@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ChevronDown, Search } from "lucide-react";
 
+import { ClientsFilters } from "@/components/clients/clients-filters";
 import { Pagination } from "@/components/ui/pagination";
 import { PriorityBadge } from "@/components/ui/priority-badge";
 import { api } from "@/lib/api";
@@ -45,16 +45,16 @@ export default async function ClientsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const page = typeof params.page === "string" ? params.page : "1";
-  const currentPage = Math.max(1, Number(page) || 1);
-  const zoneCode = typeof params.zone_code === "string" ? params.zone_code : "";
-  const codeCentre = typeof params.code_centre === "string" ? params.code_centre : "";
-  const activite = typeof params.activite === "string" ? params.activite : "";
-  const priorite = typeof params.priorite === "string" ? params.priorite : "";
-  const search = typeof params.search === "string" ? params.search : "";
+  const currentPage = Math.max(1, Number(params.page) || 1);
   const selectedClientId = typeof params.selected_client === "string" ? Number(params.selected_client) : null;
 
-  const query = `?page=${page}&zone_code=${zoneCode}&code_centre=${codeCentre}&activite=${activite}&priorite=${priorite}&search=${search}`;
+  const cleanedParams: Record<string, string> = {};
+  Object.entries(params).forEach(([k, v]) => {
+    const val = Array.isArray(v) ? v[0] : v;
+    if (val && k !== "selected_client") cleanedParams[k] = val;
+  });
+
+  const query = "?" + new URLSearchParams(cleanedParams).toString();
   const clientsResponse = await api.getLatestClients(query);
   const clients = clientsResponse?.results ?? [];
   const selectedClient = clients.find((client) => client.id === selectedClientId) ?? clients[0] ?? null;
@@ -66,75 +66,7 @@ export default async function ClientsPage({
         <p className="mt-1 text-sm text-slate-500">Consultez les clients retenus dans le dernier traitement FAB.</p>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <form className="grid gap-3 lg:grid-cols-[minmax(130px,170px)_minmax(130px,170px)_minmax(150px,190px)_minmax(150px,190px)_minmax(220px,1fr)_110px]">
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-slate-600">Centre</label>
-            <input
-              name="code_centre"
-              defaultValue={codeCentre}
-              placeholder="Centre"
-              className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-[13px] text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-slate-600">Zone</label>
-            <input
-              name="zone_code"
-              defaultValue={zoneCode}
-              placeholder="Zone"
-              className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-[13px] text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-slate-600">Activité</label>
-            <input
-              name="activite"
-              defaultValue={activite}
-              placeholder="Activité"
-              className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-[13px] text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-slate-600">Priorité</label>
-            <div className="relative">
-              <select
-                name="priorite"
-                defaultValue={priorite}
-                className="h-9 w-full appearance-none rounded-md border border-slate-300 bg-white px-3 pr-8 text-[13px] text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              >
-                <option value="">Toutes</option>
-                <option value="HAUTE">Haute</option>
-                <option value="MOYENNE">Moyenne</option>
-                <option value="FAIBLE">Faible</option>
-              </select>
-              <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-slate-600">Recherche</label>
-            <div className="relative">
-              <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                name="search"
-                defaultValue={search}
-                placeholder="Nom ou référence"
-                className="h-9 w-full rounded-md border border-slate-300 bg-white pl-9 pr-3 text-[13px] text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-end">
-            <button className="h-9 w-full rounded-md bg-blue-700 px-4 text-[13px] font-semibold text-white shadow-sm hover:bg-blue-800">
-              Filtrer
-            </button>
-          </div>
-        </form>
-      </section>
+      <ClientsFilters initialParams={cleanedParams} />
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
         <section className="min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -244,7 +176,11 @@ export default async function ClientsPage({
               <DetailRow label="Famille">{selectedClient.famille_activite}</DetailRow>
               <DetailRow label="Adresse">{selectedClient.adresse_client || "-"}</DetailRow>
               <DetailRow label="Téléphone">{selectedClient.telephone || "-"}</DetailRow>
-              <DetailRow label="Compteur">{selectedClient.numero_compteur || "-"}</DetailRow>
+              <DetailRow label="Montant dernière facture">
+                {selectedClient.montant_derniere_facture != null
+                  ? `${selectedClient.montant_derniere_facture.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} MRU`
+                  : "-"}
+              </DetailRow>
             </div>
           ) : (
             <p className="mt-4 text-sm text-slate-500">Aucun client disponible.</p>

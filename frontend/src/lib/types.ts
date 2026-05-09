@@ -71,6 +71,7 @@ export type Client = {
   adresse_client: string;
   telephone: string;
   numero_compteur: string;
+  montant_derniere_facture: number | null;
 };
 
 export type PaginatedResponse<T> = {

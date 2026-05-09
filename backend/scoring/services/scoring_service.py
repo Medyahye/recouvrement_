@@ -51,7 +51,7 @@ def score_clients_and_zones(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFram
     scored["famille_activite"] = activity_data.apply(lambda item: item[0])
     scored["score_activite"] = activity_data.apply(lambda item: item[1])
     scored["score_solde"] = _normalize_log(scored["solde"].astype(float))
-    scored["score_anciennete"] = scored["anciennete_cappee"].astype(float) / float(setting.cap_anciennete_jours)
+    scored["score_anciennete"] = 1 - (scored["anciennete_cappee"].astype(float) / float(setting.cap_anciennete_jours))
     scored["score_client"] = (
         setting.poids_solde_client * scored["score_solde"]
         + setting.poids_activite_client * scored["score_activite"]
@@ -81,7 +81,7 @@ def score_clients_and_zones(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFram
 
     grouped["score_solde_total"] = _normalize_log(grouped["solde_total"].astype(float))
     grouped["score_nb_clients"] = _normalize_series(grouped["nb_clients"].astype(float))
-    grouped["score_anciennete_zone"] = _normalize_series(grouped["anciennete_moyenne_jours"].astype(float))
+    grouped["score_anciennete_zone"] = 1 - _normalize_series(grouped["anciennete_moyenne_jours"].astype(float))
     grouped["score_activite_zone"] = _normalize_series(grouped["score_activite_moyen"].astype(float))
     grouped["score_zone"] = (
         setting.poids_solde_zone * grouped["score_solde_total"]

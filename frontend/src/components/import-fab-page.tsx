@@ -10,6 +10,8 @@ import {
   RefreshCw,
   TrendingDown,
   TrendingUp,
+  Upload,
+  X,
 } from "lucide-react";
 
 import { SectionCard } from "@/components/ui/section-card";
@@ -79,6 +81,7 @@ export function ImportFabPage({
   const [isLoading, setIsLoading] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fileErrors, setFileErrors] = useState<{ fichier: string; raison: string }[]>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [latestImport, setLatestImport] = useState<FabImport | null>(initialImport);
   const [comparison, setComparison] = useState<ComparisonResponse | null>(initialComparison);
@@ -94,10 +97,14 @@ export function ImportFabPage({
   async function handlePollMinio() {
     setIsPolling(true);
     setError(null);
+    setFileErrors([]);
     setSuccessMessage(null);
     try {
       const response = await fetch(`${API_BASE_URL}/imports/poll-minio/`, { method: "POST" });
       const payload = await response.json();
+      if (payload.erreurs?.length) {
+        setFileErrors(payload.erreurs);
+      }
       if (payload.summary) {
         setLatestImport(payload.summary);
         setComparison(payload.comparison);
@@ -192,12 +199,21 @@ export function ImportFabPage({
             </div>
           ) : null}
 
-          {error ? (
+          {(error || fileErrors.length > 0) ? (
             <div className="mt-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
               <AlertCircle size={18} className="mt-0.5 shrink-0" />
-              <div>
+              <div className="min-w-0">
                 <p className="font-semibold">Import impossible</p>
-                <p className="mt-1">{error}</p>
+                {error && <p className="mt-1">{error}</p>}
+                {fileErrors.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {fileErrors.map((fe) => (
+                      <li key={fe.fichier} className="break-words">
+                        <span className="font-medium">{fe.fichier}</span> : {fe.raison}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
           ) : null}
@@ -211,6 +227,52 @@ export function ImportFabPage({
               </div>
             </div>
           ) : null}
+
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Ou importer depuis votre PC
+            </p>
+            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 transition hover:border-slate-400 hover:bg-slate-100">
+              <Upload size={18} className="shrink-0 text-slate-500" />
+              <span className="flex-1 text-sm text-slate-600">
+                {fileMeta ? fileMeta.nom : "Choisir un fichier .txt ou .csv"}
+              </span>
+              {fileMeta && (
+                <span className="text-xs text-slate-400">{fileMeta.taille}</span>
+              )}
+              <input
+                type="file"
+                accept=".txt,.csv"
+                className="sr-only"
+                onChange={(e) => {
+                  setSelectedFile(e.target.files?.[0] ?? null);
+                  setError(null);
+                  setFileErrors([]);
+                  setSuccessMessage(null);
+                }}
+              />
+            </label>
+            {selectedFile && (
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleUpload}
+                  disabled={isLoading}
+                  className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isLoading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+                  {isLoading ? "Traitement en cours..." : "Lancer l'import"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFile(null)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            )}
+          </div>
         </SectionCard>
 
         <SectionCard title="Dernier fichier importé">

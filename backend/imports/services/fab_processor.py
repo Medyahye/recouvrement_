@@ -125,7 +125,7 @@ CENTRE_MAPPING: dict[str, str] = {
 def _normalize_columns(columns: Iterable[str]) -> list[str]:
     normalized = []
     for column in columns:
-        column_name = str(column).strip().lower()
+        column_name = str(column).strip().lstrip("﻿").lower()
         column_name = re.sub(r"[\s\-.]+", "_", column_name)
         normalized.append(column_name)
     return normalized
@@ -147,7 +147,7 @@ def _read_dataframe(uploaded_file) -> pd.DataFrame:
 
     separator_candidates = [None, "|", ";", ",", "\t"]
 
-    for encoding in ("utf-8", "latin1"):
+    for encoding in ("utf-8-sig", "utf-8", "latin1"):
         fallback_single_column = None
         for separator in separator_candidates:
             try:
@@ -204,6 +204,8 @@ def _extract_date_fab(filename: str):
 
 
 def _appliquer_mapping_centre(df: pd.DataFrame) -> pd.DataFrame:
+    if "code_centre" not in df.columns:
+        return df
     df["code_centre"] = (
         df["code_centre"]
         .astype(str)
@@ -253,9 +255,15 @@ def process_fab_file(uploaded_file) -> Tuple[pd.DataFrame, Dict[str, object]]:
     else:
         df["date_derniere_facture"] = pd.NaT
 
-    for optional_column in ["nom_client", "adresse_client", "telephone", "numero_compteur"]:
+    for optional_column in ["nom_client", "adresse_client", "telephone", "numero_compteur", "montant_derniere_facture"]:
         if optional_column not in df.columns:
             df[optional_column] = None
+
+    if "montant_derniere_facture" in df.columns:
+        df["montant_derniere_facture"] = pd.to_numeric(
+            df["montant_derniere_facture"].astype(str).str.replace(" ", "", regex=False).str.replace(",", ".", regex=False),
+            errors="coerce",
+        )
 
     today = pd.Timestamp(timezone.localdate())
     before_count = len(df)
@@ -290,7 +298,7 @@ def process_fab_file(uploaded_file) -> Tuple[pd.DataFrame, Dict[str, object]]:
     )
     df["anciennete_jours"] = (today - df["date_dernier_paiement"]).dt.days
     df["anciennete_cappee"] = df["anciennete_jours"].clip(upper=cap_anciennete)
-    df["score_anciennete"] = (df["anciennete_cappee"] / float(cap_anciennete)).round(4)
+    df["score_anciennete"] = (1 - (df["anciennete_cappee"] / float(cap_anciennete))).round(4)
 
     df["date_dernier_paiement"] = df["date_dernier_paiement"].dt.date
     df["date_derniere_facture"] = pd.to_datetime(

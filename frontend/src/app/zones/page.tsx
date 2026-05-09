@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { CalendarDays, ChevronDown, DollarSign, MapPin, Search, TrendingUp } from "lucide-react";
+import { CalendarDays, DollarSign, MapPin, TrendingUp } from "lucide-react";
 
 import { ZonesTable } from "@/components/zones/zones-table";
+import { ZonesFilters } from "@/components/zones/zones-filters";
 import { api } from "@/lib/api";
 import { formatCurrency, formatDecimal } from "@/lib/format";
 
@@ -55,7 +56,13 @@ export default async function ZonesPage({
   const codeCentre = typeof params.code_centre === "string" ? params.code_centre : "";
   const search = typeof params.search === "string" ? params.search : "";
 
-  const query = `?page=${page}&priorite=${priorite}&code_centre=${codeCentre}&search=${search}`;
+  const cleanedParams: Record<string, string> = {};
+  Object.entries(params).forEach(([k, v]) => {
+    const val = Array.isArray(v) ? v[0] : v;
+    if (val) cleanedParams[k] = val;
+  });
+
+  const query = "?" + new URLSearchParams(cleanedParams).toString();
   const zonesResponse = await api.getLatestZones(query);
 
   const zones = zonesResponse?.results ?? [];
@@ -100,58 +107,7 @@ export default async function ZonesPage({
         />
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <form className="grid gap-3 lg:grid-cols-[minmax(160px,220px)_minmax(160px,220px)_minmax(240px,1fr)_120px]">
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-slate-600">Centre</label>
-            <div className="relative">
-              <input
-                name="code_centre"
-                defaultValue={codeCentre}
-                placeholder="Tous les centres"
-                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 pr-8 text-[13px] text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
-              <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-slate-600">Priorité</label>
-            <div className="relative">
-              <select
-                name="priorite"
-                defaultValue={priorite}
-                className="h-9 w-full appearance-none rounded-md border border-slate-300 bg-white px-3 pr-8 text-[13px] text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              >
-                <option value="">Toutes</option>
-                <option value="HAUTE">Haute</option>
-                <option value="MOYENNE">Moyenne</option>
-                <option value="FAIBLE">Faible</option>
-              </select>
-              <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-slate-600">Recherche</label>
-            <div className="relative">
-              <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                name="search"
-                defaultValue={search}
-                placeholder="Rechercher une zone"
-                className="h-9 w-full rounded-md border border-slate-300 bg-white pl-9 pr-3 text-[13px] text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-end">
-            <button className="h-9 w-full rounded-md bg-blue-700 px-4 text-[13px] font-semibold text-white shadow-sm hover:bg-blue-800">
-              Filtrer
-            </button>
-          </div>
-        </form>
-      </section>
+      <ZonesFilters initialParams={cleanedParams} />
 
       <ZonesTable
         currentPage={currentPage}

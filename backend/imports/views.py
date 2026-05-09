@@ -58,6 +58,7 @@ class ImportUploadAPIView(APIView):
                         code_activite=int(row.code_activite),
                         code_echeance=int(row.code_echeance),
                         date_derniere_facture=row.date_derniere_facture,
+                        montant_derniere_facture=float(row.montant_derniere_facture) if row.montant_derniere_facture is not None and str(row.montant_derniere_facture) not in ("nan", "None", "") else None,
                         date_dernier_paiement=row.date_dernier_paiement,
                         anciennete_jours=int(row.anciennete_jours),
                         anciennete_cappee=int(row.anciennete_cappee),
@@ -134,15 +135,30 @@ class PollMinioAPIView(APIView):
             return Response({"detail": f"Erreur connexion MinIO : {exc}"}, status=500)
 
         nouveaux = []
+        erreurs = []
+        ignores = []
         for filename in files:
-            if FabImport.objects.filter(nom_fichier=filename).exists():
+            if FabImport.objects.filter(nom_fichier=filename, statut=FabImport.Statut.SUCCES).exists():
+                ignores.append(filename)
                 continue
             result = self._process_file(filename)
             if result:
                 nouveaux.append(result)
+            else:
+                fab = FabImport.objects.filter(nom_fichier=filename).order_by("-date_import").first()
+                erreurs.append({
+                    "fichier": filename,
+                    "raison": fab.message_erreur if fab else "Erreur inconnue",
+                })
 
-        if not nouveaux:
+        if not nouveaux and not erreurs:
             return Response({"detail": "Aucun nouveau fichier détecté dans MinIO."}, status=200)
+
+        if not nouveaux and erreurs:
+            return Response({
+                "detail": f"{len(erreurs)} fichier(s) en erreur, 0 importé avec succès.",
+                "erreurs": erreurs,
+            }, status=400)
 
         last = nouveaux[-1]
         return Response({
@@ -150,6 +166,7 @@ class PollMinioAPIView(APIView):
             "comparison": compare_latest_imports(),
             "nb_fichiers": len(nouveaux),
             "fichiers": [f.nom_fichier for f in nouveaux],
+            "erreurs": erreurs,
         }, status=201)
 
     def _process_file(self, filename):
@@ -188,6 +205,7 @@ class PollMinioAPIView(APIView):
                         code_activite=int(row.code_activite),
                         code_echeance=int(row.code_echeance),
                         date_derniere_facture=row.date_derniere_facture,
+                        montant_derniere_facture=float(row.montant_derniere_facture) if row.montant_derniere_facture is not None and str(row.montant_derniere_facture) not in ("nan", "None", "") else None,
                         date_dernier_paiement=row.date_dernier_paiement,
                         anciennete_jours=int(row.anciennete_jours),
                         anciennete_cappee=int(row.anciennete_cappee),
@@ -265,7 +283,7 @@ class MinioWebhookAPIView(APIView):
                 if not filename.lower().endswith((".csv", ".txt")):
                     continue
 
-                if FabImport.objects.filter(nom_fichier=filename).exists():
+                if FabImport.objects.filter(nom_fichier=filename, statut=FabImport.Statut.SUCCES).exists():
                     continue
 
                 result = PollMinioAPIView._process_file(self, filename)
